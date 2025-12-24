@@ -9,10 +9,12 @@ import helmet from "helmet";
 import passport from "passport";
 
 import userRoutes from "./routes/userRoutes.js";
+import tripRoutes from "./routes/tripRoutes.js"
 import AppError from "./utils/AppError.js";
 import globalError from "./middlewares/globalError.js";
 
 import { fileURLToPath } from "url";
+import { error } from "console";
 
 dotenv.config();
 
@@ -86,11 +88,16 @@ app.use(passport.initialize());
 
 // Routes
 app.use("/user", userRoutes);
-
+app.use("/trips",tripRoutes);
+// app.all("*",(req,res,next)=>{
+//   next(new AppError(`cannot find this route : ${req.originalUrl}`,400));
+// })
 // Default API Home Route
 app.get("/", (req, res) => {
   res.send("Welcome to the iSharee Backend!");
 });
+
+
 
 // Frontend Fallback (for React/Vue/SPA)
 // Use a regex route to avoid path-to-regexp parsing issues with the literal "*" string
