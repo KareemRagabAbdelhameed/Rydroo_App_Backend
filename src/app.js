@@ -34,7 +34,8 @@ const allowedOrigins = [
   "http://localhost:5000",
   "http://localhost:5173", // Local development
   "https://rydroo.onrender.com",
-  "htttps://rydroo.vercel.app"
+  "htttps://rydroo.vercel.app",
+  "https://rydroo-git-main-kareemragababdelhameeds-projects.vercel.app/"
 ];
 
 app.use(
