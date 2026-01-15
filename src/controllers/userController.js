@@ -64,30 +64,27 @@ const logout = async (req, res, next) => {
 };
 
 
-const verifyOtp = async (req, res, next) => {
+ const verifyOtp = async (req, res, next) => {
+  try {
     const { email, otp } = req.body;
-
     if (!email || !otp) return next(sendError(400, "missingFields"));
 
-    const record = otpStore.get(email);
+    const emailLower = email.toLowerCase();
+    const record = otpStore.get(emailLower);
 
-    if (!record) {
+    if (!record)
       return res.status(400).json({ message: "No OTP found. Please request a new one." });
-    }
 
     if (Date.now() > record.expires) {
-      otpStore.delete(email);
+      otpStore.delete(emailLower);
       return res.status(400).json({ message: "OTP expired. Please request a new one." });
     }
 
-    if (record.otp !== otp) {
+    if (record.otp !== otp)
       return res.status(400).json({ message: "Invalid OTP" });
-    }
 
-    // OTP is valid — remove it and mark the user verified (by email)
-    otpStore.delete(email);
+    otpStore.delete(emailLower);
 
-    const emailLower = email.toLowerCase();
     const user = await User.findOne({ email: emailLower });
     if (user) {
       user.isVerified = true;
@@ -95,6 +92,9 @@ const verifyOtp = async (req, res, next) => {
     }
 
     return res.json({ message: "OTP verified successfully" });
+  } catch (err) {
+    next(err);
+  }
 };
 
 // Resend OTP endpoint (POST /user/resend-otp)
