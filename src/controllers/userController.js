@@ -8,41 +8,43 @@ import singleDeviceLogout from "../utils/singleDeviceLogout.js";
 
 // User signup
 const signup = async (req, res, next) => {
-  const {
-    firstName,
-    lastName,
-    email,
-    password,
-  } = req.body;
+  try {
+    const { firstName, lastName, email, password } = req.body;
 
-  const emailLower = email?.toLowerCase();
+    const emailLower = email?.toLowerCase();
 
-  const oldUser = await User.findOne({ email: emailLower });
+    const oldUser = await User.findOne({ email: emailLower });
+    if (oldUser) return next(sendError(409, "userExists"));
 
-  if (oldUser)
-    return next(sendError(409, "userExists"));
+    const user = new User({
+      firstName,
+      lastName,
+      email: emailLower,
+      password,
+    });
 
-  // Local signup
-  const user = new User({
-    firstName,
-    lastName,
-    email: emailLower,
-    password,
-  });
+    await user.save();
 
-  await user.save();
-  // Send OTP verification email to the user
-  await sendOtpToEmail(emailLower);
+    // 🔐 Send OTP (non-blocking)
+    try {
+      await sendOtpToEmail(emailLower);
+    } catch (err) {
+      console.error("OTP email failed:", err.message);
+    }
 
-  return res.status(201).json({
-    message: "User registered! Please verify your email.",
-    data: {
-      firstName: user.firstName,
-      lastName: user.lastName,
-      email: user.email,
-    },
-  });
+    return res.status(201).json({
+      message: "User registered! Please verify your email.",
+      data: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
 };
+
 
 // User logout
 const logout = async (req, res, next) => {
