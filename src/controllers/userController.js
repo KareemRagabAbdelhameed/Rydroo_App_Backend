@@ -64,7 +64,7 @@ const logout = async (req, res, next) => {
 };
 
 
- const verifyOtp = async (req, res, next) => {
+const verifyOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
     if (!email || !otp) return next(sendError(400, "missingFields"));
@@ -72,17 +72,26 @@ const logout = async (req, res, next) => {
     const emailLower = email.toLowerCase();
     const record = otpStore.get(emailLower);
 
-    if (!record)
-      return res.status(400).json({ message: "No OTP found. Please request a new one." });
+    if (!record) {
+      return res.status(400).json({
+        message: "No OTP found. Please request a new one.",
+      });
+    }
 
     if (Date.now() > record.expires) {
       otpStore.delete(emailLower);
-      return res.status(400).json({ message: "OTP expired. Please request a new one." });
+      return res.status(400).json({
+        message: "OTP expired. Please request a new one.",
+      });
     }
 
-    if (record.otp !== otp)
-      return res.status(400).json({ message: "Invalid OTP" });
+    if (record.otp !== otp) {
+      return res.status(400).json({
+        message: "Invalid OTP",
+      });
+    }
 
+    // ✅ OTP valid
     otpStore.delete(emailLower);
 
     const user = await User.findOne({ email: emailLower });
@@ -91,47 +100,72 @@ const logout = async (req, res, next) => {
       await user.save();
     }
 
-    return res.json({ message: "OTP verified successfully" });
+    return res.json({
+      message: "OTP verified successfully",
+    });
   } catch (err) {
     next(err);
   }
 };
 
-// Resend OTP endpoint (POST /user/resend-otp)
+
 const resendOtp = async (req, res, next) => {
+  try {
     const { email } = req.body;
-    if (!email) return res.status(400).json({ message: "Email is required" });
+    if (!email)
+      return res.status(400).json({ message: "Email is required" });
 
     const emailLower = email.toLowerCase();
     const now = Date.now();
 
-    const meta = resendMeta.get(emailLower) || { lastSent: 0, count: 0, windowStart: now };
+    const meta = resendMeta.get(emailLower) || {
+      lastSent: 0,
+      count: 0,
+      windowStart: now,
+    };
 
-    // Cooldown check
+    // ⏳ Cooldown
     if (now - meta.lastSent < RESEND_COOLDOWN_MS) {
-      const wait = Math.ceil((RESEND_COOLDOWN_MS - (now - meta.lastSent)) / 1000);
-      return res.status(429).json({ message: `Please wait ${wait}s before requesting another OTP.` });
+      const wait = Math.ceil(
+        (RESEND_COOLDOWN_MS - (now - meta.lastSent)) / 1000
+      );
+      return res.status(429).json({
+        message: `Please wait ${wait}s before requesting another OTP.`,
+      });
     }
 
-    // Window reset (1 hour)
+    // 🕐 Reset hourly window
     if (now - meta.windowStart > 60 * 60 * 1000) {
       meta.count = 0;
       meta.windowStart = now;
     }
 
     if (meta.count >= RESEND_MAX_PER_HOUR) {
-      return res.status(429).json({ message: "Too many resend attempts. Try again later." });
+      return res.status(429).json({
+        message: "Too many resend attempts. Try again later.",
+      });
     }
 
-    // Send OTP and update metadata
-    await sendOtpToEmail(emailLower);
+    // 📧 Send OTP (NON-BLOCKING)
+    try {
+      await sendOtpToEmail(emailLower);
+    } catch (err) {
+      console.error("Resend OTP failed:", err.message);
+    }
+
     meta.lastSent = now;
-    meta.count = (meta.count || 0) + 1;
+    meta.count += 1;
     resendMeta.set(emailLower, meta);
 
-    // Generic response (avoid revealing whether the email exists)
-    return res.json({ message: "If an account exists, an OTP has been sent." });
+    // ✅ Generic response (security)
+    return res.json({
+      message: "If an account exists, an OTP has been sent.",
+    });
+  } catch (err) {
+    next(err);
+  }
 };
+
 
 // User login
 const login = async (req, res, next) => {
