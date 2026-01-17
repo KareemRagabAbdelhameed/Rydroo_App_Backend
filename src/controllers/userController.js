@@ -3,8 +3,9 @@ import sendError from "../utils/sendError.js";
 import generateAndSetTokens from "../utils/generateAndSetTokens.js";
 import clearCookies from "../utils/clearCookies.js";
 import validateUser from "../utils/validateUser.js";
-import  { sendOtpToEmail, otpStore, resendMeta, RESEND_COOLDOWN_MS, RESEND_MAX_PER_HOUR } from "../utils/sendOtp.js";
 import singleDeviceLogout from "../utils/singleDeviceLogout.js";
+import Otp from "../models/otp.js";
+import { sendOtpToEmail } from "../utils/sendOtpToEmail.js";
 
 // User signup
 const signup = async (req, res, next) => {
@@ -67,103 +68,51 @@ const logout = async (req, res, next) => {
 const verifyOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
-    if (!email || !otp) return next(sendError(400, "missingFields"));
+    if (!email || !otp)
+      return res.status(400).json({ message: "Missing fields" });
 
     const emailLower = email.toLowerCase();
-    const record = otpStore.get(emailLower);
 
-    if (!record) {
-      return res.status(400).json({
-        message: "No OTP found. Please request a new one.",
-      });
-    }
+    const record = await Otp.findOne({ email: emailLower, otp });
+    if (!record)
+      return res.status(400).json({ message: "Invalid or expired OTP" });
 
-    if (Date.now() > record.expires) {
-      otpStore.delete(emailLower);
-      return res.status(400).json({
-        message: "OTP expired. Please request a new one.",
-      });
-    }
+    // remove OTP
+    await Otp.deleteMany({ email: emailLower });
 
-    if (record.otp !== otp) {
-      return res.status(400).json({
-        message: "Invalid OTP",
-      });
-    }
+    // verify user
+    await User.updateOne(
+      { email: emailLower },
+      { $set: { isVerified: true } }
+    );
 
-    // ✅ OTP valid
-    otpStore.delete(emailLower);
-
-    const user = await User.findOne({ email: emailLower });
-    if (user) {
-      user.isVerified = true;
-      await user.save();
-    }
-
-    return res.json({
-      message: "OTP verified successfully",
-    });
+    return res.json({ message: "OTP verified successfully" });
   } catch (err) {
     next(err);
   }
 };
 
 
-const resendOtp = async (req, res, next) => {
-  try {
-    const { email } = req.body;
-    if (!email)
-      return res.status(400).json({ message: "Email is required" });
+export const resendOtp = async (req, res) => {
+  const { email } = req.body;
+  if (!email)
+    return res.status(400).json({ message: "Email is required" });
 
-    const emailLower = email.toLowerCase();
-    const now = Date.now();
+  const emailLower = email.toLowerCase();
 
-    const meta = resendMeta.get(emailLower) || {
-      lastSent: 0,
-      count: 0,
-      windowStart: now,
-    };
+  const lastOtp = await Otp.findOne({ email: emailLower }).sort({
+    createdAt: -1,
+  });
 
-    // ⏳ Cooldown
-    if (now - meta.lastSent < RESEND_COOLDOWN_MS) {
-      const wait = Math.ceil(
-        (RESEND_COOLDOWN_MS - (now - meta.lastSent)) / 1000
-      );
-      return res.status(429).json({
-        message: `Please wait ${wait}s before requesting another OTP.`,
-      });
-    }
-
-    // 🕐 Reset hourly window
-    if (now - meta.windowStart > 60 * 60 * 1000) {
-      meta.count = 0;
-      meta.windowStart = now;
-    }
-
-    if (meta.count >= RESEND_MAX_PER_HOUR) {
-      return res.status(429).json({
-        message: "Too many resend attempts. Try again later.",
-      });
-    }
-
-    // 📧 Send OTP (NON-BLOCKING)
-    try {
-      await sendOtpToEmail(emailLower);
-    } catch (err) {
-      console.error("Resend OTP failed:", err.message);
-    }
-
-    meta.lastSent = now;
-    meta.count += 1;
-    resendMeta.set(emailLower, meta);
-
-    // ✅ Generic response (security)
-    return res.json({
-      message: "If an account exists, an OTP has been sent.",
-    });
-  } catch (err) {
-    next(err);
+  if (lastOtp && Date.now() - lastOtp.createdAt < 60 * 1000) {
+    return res
+      .status(429)
+      .json({ message: "Please wait before requesting another OTP" });
   }
+
+  await sendOtpToEmail(emailLower);
+
+  return res.json({ message: "OTP sent if account exists" });
 };
 
 
