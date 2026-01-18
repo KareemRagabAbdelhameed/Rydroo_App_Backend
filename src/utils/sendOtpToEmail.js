@@ -1,40 +1,46 @@
 import Otp from "../models/otp.js";
-import nodemailer from "nodemailer";
-
-const transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 465,          
-    secure: true, // IMPORTANT
-  auth: {
-    user: process.env.BREVO_SMTP_USER,
-    pass: process.env.BREVO_SMTP_PASS,
-  },
-  connectionTimeout: 20000,
-  socketTimeout: 20000,
-});
 
 export const sendOtpToEmail = async (email) => {
+  console.log("Sending OTP to:", email);
+
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  // delete old OTPs
+  // remove old OTPs
   await Otp.deleteMany({ email });
 
-  // save new OTP (5 min)
+  // save OTP in Mongo (5 minutes)
   await Otp.create({
     email,
     otp,
     expiresAt: new Date(Date.now() + 5 * 60 * 1000),
   });
 
-  // send email
-  await transporter.sendMail({
-    from: `"Rydroo" <${process.env.SUPPORT_EMAIL}>`,
-    to: email,
-    subject: "Verify your email",
-    html: `
-      <h2>Email Verification</h2>
-      <h1>${otp}</h1>
-      <p>This code expires in 5 minutes</p>
-    `,
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "api-key": process.env.BREVO_API_KEY,
+    },
+    body: JSON.stringify({
+      sender: {
+        name: "Rydroo",
+        email: process.env.SUPPORT_EMAIL,
+      },
+      to: [{ email }],
+      subject: "Verify your email",
+      htmlContent: `
+        <h2>Email Verification</h2>
+        <h1>${otp}</h1>
+        <p>This code expires in 5 minutes</p>
+      `,
+    }),
   });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("BREVO API ERROR:", errorText);
+    throw new Error("Failed to send OTP email");
+  }
+
+  console.log("✅ OTP email sent successfully");
 };
