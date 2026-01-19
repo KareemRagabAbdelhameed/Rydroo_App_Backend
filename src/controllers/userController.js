@@ -10,7 +10,7 @@ import { sendOtpToEmail } from "../utils/sendOtpToEmail.js";
 // User signup
 const signup = async (req, res, next) => {
   try {
-    const { firstName, lastName, email, password } = req.body;
+    const { firstName, lastName, email, password,role } = req.body;
 
     const emailLower = email?.toLowerCase();
 
@@ -22,6 +22,7 @@ const signup = async (req, res, next) => {
       lastName,
       email: emailLower,
       password,
+      role
     });
 
     await user.save();
@@ -39,6 +40,7 @@ const signup = async (req, res, next) => {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
+        role : user.role
       },
     });
   } catch (err) {
@@ -152,7 +154,9 @@ const login = async (req, res, next) => {
         lastName:user.lastName,
         email: user.email,
         id: user._id,
+        role : user.role
       },
+      
     },
   });
 };

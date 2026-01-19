@@ -37,7 +37,6 @@ const verifyToken = async (req, res, next) => {
         "5m"
       );
       setCookie(res, "access_token", accessToken, 5 * 60 * 1000);
-
       // Attach user details to the request
       req.user = decodedRefreshToken;
     } catch (err) {
@@ -51,6 +50,7 @@ const verifyToken = async (req, res, next) => {
       const decodedAccessToken = verifyJWT(access_token);
 
       req.user = decodedAccessToken;
+      console.log("AccessToken : ",decodedAccessToken);
     } catch (err) {
       return next(sendError(401));
     }

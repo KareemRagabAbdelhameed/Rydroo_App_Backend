@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import validator from "validator"; // Import validator.js
 import bcrypt from "bcryptjs";
+import userRoles from "../utils/userRoles.js";
 
 const refreshTokenSchema = new mongoose.Schema({
   token: { type: String, required: true },
@@ -49,6 +50,11 @@ const userSchema = new mongoose.Schema(
         validator: (value) => validator.isEmail(value), // Validate email format
         message: "Please provide a valid email address.",
       },
+    },
+    role : {
+      type : String,
+      enum : [userRoles.ADMIN, userRoles.USER, userRoles.DRIVER],
+      default : userRoles.USER
     },
     googleId: {
       type: String,
