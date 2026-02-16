@@ -36,6 +36,7 @@ const verifyToken = async (req, res, next) => {
         },
         "5m"
       );
+      console.log("access_token ",accessToken);
       setCookie(res, "access_token", accessToken, 5 * 60 * 1000);
       // Attach user details to the request
       req.user = decodedRefreshToken;

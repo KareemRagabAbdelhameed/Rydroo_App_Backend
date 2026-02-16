@@ -34,6 +34,18 @@ const signup = async (req, res, next) => {
       console.error("OTP email failed:", err.message);
     }
 
+    if(role === "driver"){
+      return res.status(201).json({
+        message : "Signup successful. Complete your driver profile.",
+        data: {
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          role : user.role
+        },
+      })
+    }
+
     return res.status(201).json({
       message: "User registered! Please verify your email.",
       data: {

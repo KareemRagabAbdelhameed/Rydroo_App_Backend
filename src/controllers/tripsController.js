@@ -2,7 +2,8 @@ import Trip from "../models/tripModel.js"
 import AppError from "../utils/AppError.js";
 import catchAsync from "../utils/catchAsync.js";
 import mongoose from "mongoose";
-
+import DriverProfile from "../models/driverProfile.js";
+import vehicle from "../models/vehicle.js"
 const allowedUpdates = [
     "source",
     "destination",
@@ -20,9 +21,28 @@ const allowedUpdates = [
     const page = query.page || 1;
     const skip = (page-1)*limit;
     
-    const trips =await Trip.find({status : "active"},{"__v":false}).limit(limit).skip(skip);
+    const trips =await Trip.find({status : "active"},{"__v":false})
+    .populate({
+      path : "driverProfile",
+      populate: {
+        path: "user",
+        select: "firstName lastName",
+      },
+    })
+    .populate({
+      path : "vehicle",
+      select: "make model plateNumber"
+    })
+    
+    
+    .limit(limit).skip(skip);
+    const lang = req.headers.lang || "en";
+    const localizedTrips = Trip.schema.methods.toObjectLocalizedOnly(
+      trips,
+      lang,
+    )
     res.json({status : "Success",data : {
-        trips
+        localizedTrips
     }});
 }
 const getSingleTrip = catchAsync(async(req,res,next)=>{
@@ -31,60 +51,123 @@ const getSingleTrip = catchAsync(async(req,res,next)=>{
         return next(new AppError("Invalid trip ID format",400));
     }
 
-    const trip =await Trip.findById(tripId);
+    const trip =await Trip.findById(tripId)
+    .populate({
+      path : "driverProfile",
+      populate: {
+        path: "user",
+        select: "firstName lastName",
+      },
+    })
+    .populate({
+      path : "vehicle",
+      select: "make model plateNumber"
+    });
+    
     if(!trip){
         return next(new AppError("Trip not found",404))
     }
 
+    const lang = req.headers.lang || "en";
+    const localizedTrip = Trip.schema.methods.toObjectLocalizedOnly(
+      trip,
+      lang,
+    )
+
     res.status(200).json({
         status : "success",
-        data : trip
+        data : localizedTrip
     })
 })
-const createTrip = catchAsync(async(req,res,next)=>{
-    const {
-        source,
-        destination,
-        date,
-        time,
-        availableSeats,
-        price,
-        currency,
-      } = req.body;
-      if (!source ||!destination ||!date ||!time ||availableSeats === undefined ||price === undefined){
-        return next(new AppError("All trip fields are required",400));
-      }
-      if (availableSeats <= 0) {
-        return next(
-          new AppError("Available seats must be greater than zero", 400)
-        );
-      }
-    
-      if (price <= 0) {
-        return next(new AppError("Trip price must be greater than zero", 400));
-      }
-    //   check if the trip already exist
-      const existingTrip = await Trip.findOne({
-        source,
-        destination,
-        date,
-        time,
-      });
-      
-      if (existingTrip) {
-        return next(
-          new AppError("Trip already exists at the same time and date", 409)
-        );
-      }
+const createTrip = catchAsync(async (req, res, next) => {
+  const {
+    source,
+    destination,
+    date,
+    time,
+    availableSeats,
+    price,
+    currency,
+    driverProfileId, // جاي من الأدمن
+  } = req.body;
 
-      const trip = await Trip.create({source,date,destination,price,time,availableSeats,currency});
+  // 1️⃣ validations الأساسية
+  if (
+    !source ||
+    !destination ||
+    !date ||
+    !time ||
+    availableSeats === undefined ||
+    price === undefined ||
+    !driverProfileId
+  ) {
+    return next(new AppError("All trip fields are required", 400));
+  }
 
-      res.status(200).json({
-        status : "success",
-        message : "trip created successfully",
-        data : trip,
-      })
-})
+  if (availableSeats <= 0) {
+    return next(new AppError("Available seats must be greater than zero", 400));
+  }
+
+  if (price <= 0) {
+    return next(new AppError("Trip price must be greater than zero", 400));
+  }
+
+  // 2️⃣ التأكد إن الرحلة مش مكررة
+  const existingTrip = await Trip.findOne({
+    source,
+    destination,
+    date,
+    time,
+  });
+
+  if (existingTrip) {
+    return next(
+      new AppError("Trip already exists at the same time and date", 409)
+    );
+  }
+
+  // 3️⃣ جلب السواق + العربية
+  const driverProfile = await DriverProfile.findById(driverProfileId)
+    .populate("user")
+    .populate("vehicle");
+
+  if (!driverProfile) {
+    return next(new AppError("Driver not found", 404));
+  }
+
+  if (driverProfile.status !== "available") {
+    return next(new AppError("Driver is not available", 400));
+  }
+
+  if (!driverProfile.vehicle) {
+    return next(new AppError("Driver has no vehicle", 400));
+  }
+
+  // 4️⃣ إنشاء الرحلة
+  const trip = await Trip.create({
+    source,
+    destination,
+    date,
+    time,
+    availableSeats,
+    price,
+    currency,
+    driver: driverProfile.user._id,
+    driverProfile: driverProfile._id,
+    vehicle: driverProfile.vehicle._id,
+  });
+
+  // 5️⃣ تحديث حالة السواق
+  driverProfile.status = "on-trip";
+  await driverProfile.save();
+
+  res.status(201).json({
+    status: "success",
+    message: "Trip created successfully with assigned driver",
+    data: trip,
+  });
+});
+
 
 const updateTrip = catchAsync(async(req,res,next)=>{
     const {tripId} = req.params;

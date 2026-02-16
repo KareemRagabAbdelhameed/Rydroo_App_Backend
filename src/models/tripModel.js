@@ -1,18 +1,21 @@
 import mongoose from "mongoose";
 import { setDayFromDate } from "../middlewares/setDayFromDate.js";
-
+import mongooseI18n from "mongoose-i18n-localize";
+import { locales } from "validator/lib/isIBAN.js";
 const tripSchema = new mongoose.Schema(
   {
     source: {
       type: String,
       required: [true, "Source is required"],
       trim: true,
+      i18n : true
     },
 
     destination: {
       type: String,
       required: [true, "Destination is required"],
       trim: true,
+      i18n : true
     },
 
     date: {
@@ -31,6 +34,7 @@ const tripSchema = new mongoose.Schema(
         "Thursday",
         "Friday",
       ],
+      i18n : true
     },
 
     time: {
@@ -52,9 +56,21 @@ const tripSchema = new mongoose.Schema(
 
     currency: {
       type: String,
-      required: true,
+      // required: true,
       enum: ["EGP"], 
       default: "EGP",
+    },
+
+    driverProfile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "DriverProfile",
+      required: true,
+    },
+    
+    vehicle: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Vehicle",
+      required: true,
     },
 
     status: {
@@ -69,5 +85,10 @@ const tripSchema = new mongoose.Schema(
 );
 
 setDayFromDate(tripSchema);
+
+tripSchema.plugin(mongooseI18n,{
+  locales : ["en","ar"],
+  defaultLocale : "ar"
+})
 
 export default mongoose.model("Trip", tripSchema);
