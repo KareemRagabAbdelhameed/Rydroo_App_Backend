@@ -15,36 +15,63 @@ const allowedUpdates = [
     "status",
   ];
 
- const getAllTrips = async(req,res)=>{
-    const query = req.query;
-    const limit = query.limit || 10;
-    const page = query.page || 1;
-    const skip = (page-1)*limit;
-    
-    const trips =await Trip.find({status : "active"},{"__v":false})
-    .populate({
-      path : "driverProfile",
-      populate: {
-        path: "user",
-        select: "firstName lastName",
-      },
-    })
-    .populate({
-      path : "vehicle",
-      select: "make model plateNumber"
-    })
-    
-    
-    .limit(limit).skip(skip);
-    const lang = req.headers.lang || "en";
-    const localizedTrips = Trip.schema.methods.toObjectLocalizedOnly(
-      trips,
-      lang,
-    )
-    res.json({status : "Success",data : {
-        localizedTrips
-    }});
-}
+  const getAllTrips = async (req, res) => {
+    try {
+      const { source, destination, limit = 10, page = 1 } = req.query;
+  
+      const lang = req.headers["accept-language"] || "ar";
+  
+      const skip = (Number(page) - 1) * Number(limit);
+  
+      const filter = {
+        status: "active",
+        availableSeats: { $gt: 0 },
+      };
+  
+      // search in correct locale
+      if (source) {
+        filter[`source.${lang}`] = source;
+      }
+  
+      if (destination) {
+        filter[`destination.${lang}`] = destination;
+      }
+  
+      const trips = await Trip.find(filter, { __v: false })
+        .populate({
+          path: "driverProfile",
+          populate: {
+            path: "user",
+            select: "firstName lastName",
+          },
+        })
+        .populate({
+          path: "vehicle",
+          select: "make model plateNumber",
+        })
+        .limit(Number(limit))
+        .skip(skip)
+        .sort({ date: 1 });
+  
+      const total = await Trip.countDocuments(filter);
+  
+      const localizedTrips =
+        Trip.schema.methods.toObjectLocalizedOnly(trips, lang);
+  
+      res.json({
+        status: "Success",
+        total,
+        page: Number(page),
+        pages: Math.ceil(total / limit),
+        data: localizedTrips,
+      });
+    } catch (error) {
+      res.status(500).json({
+        status: "Fail",
+        message: error.message,
+      });
+    }
+  };
 const getSingleTrip = catchAsync(async(req,res,next)=>{
     const {tripId} = req.params;
     if(!mongoose.Types.ObjectId.isValid(tripId)){
