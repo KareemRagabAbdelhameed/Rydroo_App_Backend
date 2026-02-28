@@ -95,7 +95,7 @@ const getSingleTrip = catchAsync(async(req,res,next)=>{
         return next(new AppError("Trip not found",404))
     }
 
-    const lang = req.headers.lang || "en";
+    const lang = req.headers["accept-language"] || "ar";
     const localizedTrip = Trip.schema.methods.toObjectLocalizedOnly(
       trip,
       lang,
