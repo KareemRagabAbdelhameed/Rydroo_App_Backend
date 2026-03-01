@@ -1,9 +1,11 @@
+import "dotenv/config";
 import Trip from "../models/tripModel.js"
 import AppError from "../utils/AppError.js";
 import catchAsync from "../utils/catchAsync.js";
 import mongoose from "mongoose";
 import DriverProfile from "../models/driverProfile.js";
 import vehicle from "../models/vehicle.js"
+import Stripe from "stripe";
 const allowedUpdates = [
     "source",
     "destination",
@@ -14,6 +16,8 @@ const allowedUpdates = [
     "currency",
     "status",
   ];
+
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
   const getAllTrips = async (req, res) => {
     try {
@@ -264,7 +268,22 @@ const cancelTrip = catchAsync(async(req,res,next)=>{
 
 const bookSeats = catchAsync(async(req,res,next)=>{
   const {tripId} = req.params;
-  const {seats} = req.body;
+  const {seats,paymentIntentId} = req.body;
+  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+  if (paymentIntent.status !== "succeeded") {
+    return next(new AppError("Payment not completed", 400));
+  }
+  
+  if (paymentIntent.metadata.tripId !== tripId) {
+    return next(new AppError("Invalid payment data", 400));
+  }
+  
+  if (Number(paymentIntent.metadata.seats) !== seats) {
+    return next(new AppError("Seats mismatch", 400));
+  }
+
+
   if (!mongoose.Types.ObjectId.isValid(tripId)) {
     return next(new AppError("Invalid trip ID format", 400));
   }

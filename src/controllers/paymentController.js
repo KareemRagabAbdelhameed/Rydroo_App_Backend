@@ -5,7 +5,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const createPaymentIntent = async (req, res) => {
   try {
-    const { tripId } = req.body;
+    const { tripId , seats } = req.body;
 
     // 1️⃣ نجيب الرحلة
     const trip = await Trip.findById(tripId);
@@ -23,15 +23,18 @@ const createPaymentIntent = async (req, res) => {
       return res.status(400).json({ message: "No seats available" });
     }
 
+    const totalAmount = trip.price * seats;
+
     // 3️⃣ ننشئ PaymentIntent بالسعر الحقيقي
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: trip.price * 100, // مهم جداً
+      amount: totalAmount * 100, // مهم جداً
       currency: trip.currency.toLowerCase(), // Stripe بيحب lowercase
       automatic_payment_methods: {
         enabled: true,
       },
       metadata: {
         tripId: trip._id.toString(),
+        seats : seats.toString(),
         driverId: trip.driverProfile.toString(),
       },
     });
