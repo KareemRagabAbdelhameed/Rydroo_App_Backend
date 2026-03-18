@@ -43,4 +43,18 @@ const getMyDriverProfile = async (req, res, next) => {
   });
 };
 
-export default {createDriverProfile,getMyDriverProfile}
+const getAvailableDrivers = async (req, res, next) => {
+
+  const drivers = await DriverProfile.find({ status: "available" })
+    .populate("user", "firstName lastName")
+    .populate("vehicle");
+
+  res.status(200).json({
+    status: "success",
+    results: drivers.length,
+    data: drivers
+  });
+
+};
+
+export default {createDriverProfile,getMyDriverProfile,getAvailableDrivers}

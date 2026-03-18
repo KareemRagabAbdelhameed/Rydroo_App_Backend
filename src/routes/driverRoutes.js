@@ -5,4 +5,5 @@ const router = express.Router();
 
 router.post("/createDriverProfile",verifyToken,driverController.createDriverProfile);
 router.get("/getDriverProfile",verifyToken,driverController.getMyDriverProfile);
+router.get("/getAvailableDrivers",verifyToken,driverController.getAvailableDrivers);
 export default router

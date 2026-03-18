@@ -132,13 +132,13 @@ export const resendOtp = async (req, res) => {
 
 // User login
 const login = async (req, res, next) => {
-  const userId = req.user?.id;
+  // const userId = req.user?.id;
 
-  if (userId) {
-    return res.status(200).json({
-      message: "User is already logged in.",
-    });
-  }
+  // if (userId) {
+  //   return res.status(200).json({
+  //     message: "User is already logged in.",
+  //   });
+  // }
 
   const { email, password } = req.body;
 

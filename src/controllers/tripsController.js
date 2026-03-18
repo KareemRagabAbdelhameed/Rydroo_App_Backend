@@ -28,7 +28,7 @@ const allowedUpdates = [
       const skip = (Number(page) - 1) * Number(limit);
   
       const filter = {
-        status: "active",
+        status: { $in: ["scheduled", "active"] },
         availableSeats: { $gt: 0 },
       };
   
@@ -183,19 +183,69 @@ const createTrip = catchAsync(async (req, res, next) => {
     availableSeats,
     price,
     currency,
+    status : "scheduled",
     driver: driverProfile.user._id,
     driverProfile: driverProfile._id,
     vehicle: driverProfile.vehicle._id,
   });
 
-  // 5️⃣ تحديث حالة السواق
-  driverProfile.status = "on-trip";
-  await driverProfile.save();
+  await DriverProfile.findByIdAndUpdate(
+    trip.driverProfile,
+    {status : "on-trip"}
+  );
 
   res.status(201).json({
     status: "success",
     message: "Trip created successfully with assigned driver",
     data: trip,
+  });
+});
+
+const startTrip = catchAsync(async (req, res, next) => {
+  const { tripId } = req.params;
+
+  const trip = await Trip.findById(tripId);
+
+  if (!trip) return next(new AppError("Trip not found", 404));
+
+  if (trip.status !== "scheduled" && trip.status !== "full")
+    return next(new AppError("Trip cannot be started", 400));
+
+  trip.status = "active";
+  await trip.save();
+
+  await DriverProfile.findByIdAndUpdate(
+    trip.driverProfile,
+    { status: "on-trip" }
+  );
+
+  res.status(200).json({
+    status: "success",
+    message: "Trip started successfully",
+  });
+});
+
+const completeTrip = catchAsync(async (req, res, next) => {
+  const { tripId } = req.params;
+
+  const trip = await Trip.findById(tripId);
+
+  if (!trip) return next(new AppError("Trip not found", 404));
+
+  if (trip.status !== "active" && trip.status !== "full")
+    return next(new AppError("Trip is not active", 400));
+
+  trip.status = "completed";
+  await trip.save();
+
+  await DriverProfile.findByIdAndUpdate(
+    trip.driverProfile,
+    { status: "available" }
+  );
+
+  res.status(200).json({
+    status: "success",
+    message: "Trip completed successfully",
   });
 });
 
@@ -252,13 +302,24 @@ const cancelTrip = catchAsync(async(req,res,next)=>{
   if(!trip){
     return next(new AppError("Trip not found", 404));
   }
+  if (trip.status === "completed")
+    return next(new AppError("Completed trip cannot be cancelled", 400));
 
   if(trip.status==="cancelled"){
     return next(new AppError("Trip is already cancelled", 400));
   }
+  const previousStatus = trip.status;
   // cancel trip
   trip.status = "cancelled";
   await trip.save();
+  // should make the driver be available
+  if (previousStatus === "active") {
+    await DriverProfile.findByIdAndUpdate(
+      trip.driverProfile,
+      { status: "available" }
+    );
+  }
+
   res.status(200).json({
     status: "success",
     message: "Trip cancelled successfully",
@@ -296,7 +357,7 @@ const bookSeats = catchAsync(async(req,res,next)=>{
   const trip = await Trip.findOneAndUpdate(
     {
       _id : tripId,
-      status : "active",
+      status: { $in: ["scheduled", "active"] },
       availableSeats : {$gte : seats},
     },
     {
@@ -317,7 +378,7 @@ const bookSeats = catchAsync(async(req,res,next)=>{
   }
 
   if (trip.availableSeats === 0) {
-    trip.status = "completed";
+    trip.status = "full";
     await trip.save();
   }
 
@@ -334,6 +395,8 @@ export default {
     getAllTrips,
     getSingleTrip,
     createTrip,
+    startTrip,
+    completeTrip,
     updateTrip,
     cancelTrip,
     bookSeats
