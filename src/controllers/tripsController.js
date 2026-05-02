@@ -181,6 +181,7 @@ const createTrip = catchAsync(async (req, res, next) => {
     date,
     time,
     availableSeats,
+    bookedSeats: [],
     price,
     currency,
     status : "scheduled",
@@ -327,70 +328,106 @@ const cancelTrip = catchAsync(async(req,res,next)=>{
   });
 })
 
-const bookSeats = catchAsync(async(req,res,next)=>{
-  const {tripId} = req.params;
-  const {seats,paymentIntentId} = req.body;
-  const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+const bookSeats = catchAsync(async (req, res, next) => {
+  const { tripId } = req.params;
+  const { selectedSeats, paymentIntentId } = req.body;
+
+  const paymentIntent =
+    await stripe.paymentIntents.retrieve(paymentIntentId);
 
   if (paymentIntent.status !== "succeeded") {
     return next(new AppError("Payment not completed", 400));
   }
-  
+
   if (paymentIntent.metadata.tripId !== tripId) {
     return next(new AppError("Invalid payment data", 400));
   }
-  
-  if (Number(paymentIntent.metadata.seats) !== seats) {
-    return next(new AppError("Seats mismatch", 400));
-  }
-
 
   if (!mongoose.Types.ObjectId.isValid(tripId)) {
     return next(new AppError("Invalid trip ID format", 400));
   }
-  if (!seats || seats <= 0) {
+
+  if (
+    !Array.isArray(selectedSeats) ||
+    selectedSeats.length === 0
+  ) {
     return next(
-      new AppError("Seats must be a number greater than zero", 400)
+      new AppError("Please select seats", 400)
     );
   }
 
-  const trip = await Trip.findOneAndUpdate(
-    {
-      _id : tripId,
-      status: { $in: ["scheduled", "active"] },
-      availableSeats : {$gte : seats},
-    },
-    {
-      $inc : {availableSeats : -seats}
-    },
-    {
-      new : true
-    }
-  )
+  const hasInvalidSeat = selectedSeats.some(
+    (seat) =>
+      !Number.isInteger(seat) ||
+      seat < 1 ||
+      seat > 14
+  );
 
-  if (!trip) {
+  if (hasInvalidSeat) {
     return next(
       new AppError(
-        "Trip not found, cancelled, or not enough available seats",
+        "Seat numbers must be between 1 and 14",
         400
       )
     );
   }
 
+  const trip = await Trip.findById(tripId);
+
+  if (!trip) {
+    return next(
+      new AppError("Trip not found", 404)
+    );
+  }
+
+  if (
+    !["scheduled", "active"].includes(
+      trip.status
+    )
+  ) {
+    return next(
+      new AppError(
+        "Trip is not available",
+        400
+      )
+    );
+  }
+
+  const alreadyBooked =
+    selectedSeats.some((seat) =>
+      trip.bookedSeats.includes(seat)
+    );
+
+  if (alreadyBooked) {
+    return next(
+      new AppError(
+        "Some selected seats are already booked",
+        400
+      )
+    );
+  }
+
+  trip.bookedSeats.push(...selectedSeats);
+
+  trip.availableSeats =
+    14 - trip.bookedSeats.length;
+
   if (trip.availableSeats === 0) {
     trip.status = "full";
-    await trip.save();
   }
+
+  await trip.save();
 
   res.status(200).json({
     status: "success",
     message: "Seats booked successfully",
     data: {
       tripId: trip._id,
+      bookedSeats: trip.bookedSeats,
       remainingSeats: trip.availableSeats,
     },
   });
-})
+});
 export default {
     getAllTrips,
     getSingleTrip,

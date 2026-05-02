@@ -48,6 +48,20 @@ const tripSchema = new mongoose.Schema(
       min: [0, "Seats cannot be negative"],
     },
 
+     bookedSeats: {
+      type: [Number],
+      default: [],
+      validate: {
+        validator: function (seats) {
+          return seats.every(
+            (seat) => Number.isInteger(seat) && seat >= 1 && seat <= 14
+          );
+        },
+        message: "Seat numbers must be between 1 and 14",
+      },
+    },
+
+
     price: {
       type: Number,
       required: [true, "Price is required"],

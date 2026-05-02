@@ -5,7 +5,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 const createPaymentIntent = async (req, res) => {
   try {
-    const { tripId , seats } = req.body;
+    const { tripId , selectedSeats } = req.body;
 
     // 1️⃣ نجيب الرحلة
     const trip = await Trip.findById(tripId);
@@ -15,7 +15,10 @@ const createPaymentIntent = async (req, res) => {
     }
 
     // 2️⃣ نتأكد إنها متاحة
-    if (trip.status !== "active") {
+    if (
+  !["scheduled", "active"].includes(
+    trip.status
+  )) {
       return res.status(400).json({ message: "Trip is not available" });
     }
 
@@ -23,7 +26,7 @@ const createPaymentIntent = async (req, res) => {
       return res.status(400).json({ message: "No seats available" });
     }
 
-    const totalAmount = trip.price * seats;
+    const totalAmount = trip.price * selectedSeats.length;
 
     // 3️⃣ ننشئ PaymentIntent بالسعر الحقيقي
     const paymentIntent = await stripe.paymentIntents.create({
@@ -33,10 +36,11 @@ const createPaymentIntent = async (req, res) => {
         enabled: true,
       },
       metadata: {
-        tripId: trip._id.toString(),
-        seats : seats.toString(),
-        driverId: trip.driverProfile.toString(),
-      },
+  tripId: trip._id.toString(),
+  seatsCount: selectedSeats.length.toString(),
+  selectedSeats: JSON.stringify(selectedSeats),
+  driverId: trip.driverProfile.toString(),
+},
     });
 
     res.status(200).json({
