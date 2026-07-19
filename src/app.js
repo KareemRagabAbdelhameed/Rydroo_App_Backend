@@ -12,7 +12,8 @@ import userRoutes from "./routes/userRoutes.js";
 import tripRoutes from "./routes/tripRoutes.js";
 import driverRoutes from "./routes/driverRoutes.js";
 import vehicleRoutes from "./routes/vehicleRoutes.js";
-import paymentRoute from "./routes/paymentRoute.js"
+import paymentRoute from "./routes/paymentRoute.js";
+import passengerRoutes from "./routes/passengerRoutes.js";
 import AppError from "./utils/AppError.js";
 import globalError from "./middlewares/globalError.js";
 
@@ -97,6 +98,7 @@ app.use("/trips",tripRoutes);
 app.use("/driver",driverRoutes);
 app.use("/vehicle",vehicleRoutes);
 app.use("/payment",paymentRoute);
+app.use("/passenger", passengerRoutes);
 // app.all("*",(req,res,next)=>{
 //   next(new AppError(`cannot find this route : ${req.originalUrl}`,400));
 // })
