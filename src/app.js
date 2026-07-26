@@ -16,6 +16,7 @@ import paymentRoute from "./routes/paymentRoute.js";
 import passengerRoutes from "./routes/passengerRoutes.js";
 import AppError from "./utils/AppError.js";
 import globalError from "./middlewares/globalError.js";
+import { setupSwagger } from "./config/openapi.js";
 
 import { fileURLToPath } from "url";
 import { error } from "console";
@@ -99,6 +100,10 @@ app.use("/driver",driverRoutes);
 app.use("/vehicle",vehicleRoutes);
 app.use("/payment",paymentRoute);
 app.use("/passenger", passengerRoutes);
+
+// Setup Swagger Docs (Zod + OpenAPI)
+setupSwagger(app);
+
 // app.all("*",(req,res,next)=>{
 //   next(new AppError(`cannot find this route : ${req.originalUrl}`,400));
 // })

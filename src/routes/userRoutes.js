@@ -4,17 +4,20 @@ import userController from "../controllers/userController.js";
 import validateRequiredFields from "../middlewares/validateRequiredFields.js";
 import verifyToken from "../middlewares/verifyToken.js";
 import optionalAuth from "../middlewares/optionalAuth.js";
+import { validateZod } from "../middlewares/validateZod.js";
+import { signupSchema, loginSchema } from "../validations/userValidations.js";
 
 const router = express.Router();
 
 router.post(
   "/signup",
-  validateRequiredFields("user"),
+  validateZod(signupSchema),
   asyncHandler(userController.signup)
 );
 router.post(
   "/login",
   optionalAuth, // If the user is already logged in add add his id
+  validateZod(loginSchema),
   asyncHandler(userController.login)
 );
 
