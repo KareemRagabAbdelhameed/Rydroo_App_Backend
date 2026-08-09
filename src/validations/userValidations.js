@@ -1,12 +1,21 @@
 import { z, registry } from "../config/zodOpenApi.js";
 
 // Schemas
+const signupBodySchema = z.object({
+  firstName: z.string().min(2).openapi({ example: "John" }),
+  lastName: z.string().min(2).openapi({ example: "Doe" }),
+  phoneNumber: z.string().openapi({ example: "+201012345678" }),
+  email: z.string().email().openapi({ example: "john@example.com" }),
+  password: z.string().min(8).openapi({ example: "Password123!" }),
+  confirmPassword: z.string().min(8).openapi({ example: "Password123!" }),
+  role: z.enum(["admin", "user", "driver"]).default("user").openapi({ example: "user" }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 export const signupSchema = z.object({
-  body: z.object({
-    name: z.string().min(2).openapi({ example: "John Doe" }),
-    email: z.string().email().openapi({ example: "john@example.com" }),
-    password: z.string().min(6).openapi({ example: "password123" }),
-  }),
+  body: signupBodySchema,
 });
 
 export const loginSchema = z.object({

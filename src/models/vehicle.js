@@ -11,7 +11,9 @@ const vehicleSchema = new mongoose.Schema({
   plateNumber: { type: String, index: true },
   insurancePolicyNumber: { type: String },
   insuranceExpiryDate: { type: Date },
-  vehicleLicenseDocument: { type: String }, // Cloudinary URL
+  vehicleLicenseFrontImage: { type: String }, // Cloudinary URL
+  vehicleLicenseBackImage: { type: String }, // Cloudinary URL
+  vehiclePhoto: { type: String }, // Cloudinary URL
 }, { timestamps: true });
 
 export default mongoose.model("Vehicle", vehicleSchema);

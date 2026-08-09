@@ -5,7 +5,9 @@ const driverProfileSchema = new mongoose.Schema({
 
   // Personal Information
   fullName: { type: String },
-  driverIdNumber: { type: String },
+  nationalIdNumber: { type: String },
+  nationalIdFrontImage: { type: String }, // Cloudinary URL
+  nationalIdBackImage: { type: String }, // Cloudinary URL
   dateOfBirth: { type: Date },
   contactNumber: { type: String },
   email: { type: String },
@@ -20,6 +22,8 @@ const driverProfileSchema = new mongoose.Schema({
   endorsements: { type: String },
   licenseFrontImage: { type: String }, // Cloudinary URL
   licenseBackImage: { type: String },  // Cloudinary URL
+  itineraryLicenseFrontImage: { type: String }, // Optional Cloudinary URL
+  itineraryLicenseBackImage: { type: String },  // Optional Cloudinary URL
 
   // Status & Ratings
   status: { type: String, enum: ["draft", "pending", "inactive", "available", "on-trip", "suspended", "rejected"], default: "draft" },
