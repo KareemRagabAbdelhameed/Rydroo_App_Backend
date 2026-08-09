@@ -26,10 +26,15 @@ const upload = multer({
 
 // Driver registration fields to be accepted
 export const uploadRegistrationDocs = upload.fields([
-  { name: "permitDocument", maxCount: 1 },
-  { name: "vehicleLicenseDocument", maxCount: 1 },
+  { name: "nationalIdFrontImage", maxCount: 1 },
+  { name: "nationalIdBackImage", maxCount: 1 },
   { name: "licenseFrontImage", maxCount: 1 },
   { name: "licenseBackImage", maxCount: 1 },
+  { name: "itineraryLicenseFrontImage", maxCount: 1 },
+  { name: "itineraryLicenseBackImage", maxCount: 1 },
+  { name: "vehicleLicenseFrontImage", maxCount: 1 },
+  { name: "vehicleLicenseBackImage", maxCount: 1 },
+  { name: "vehiclePhoto", maxCount: 1 },
 ]);
 
 // Passenger profile fields to be accepted

@@ -94,40 +94,48 @@ const registerDriverProfile = async (req, res, next) => {
 
     // 2. Handle File Uploads to Cloudinary (if any files are attached)
     if (req.files) {
+      if (req.files.nationalIdFrontImage && req.files.nationalIdFrontImage[0]) {
+        const uploadResult = await cloudinaryUploadBuffer(req.files.nationalIdFrontImage[0].buffer, "driver_documents");
+        profile.nationalIdFrontImage = uploadResult.secure_url;
+      }
+      if (req.files.nationalIdBackImage && req.files.nationalIdBackImage[0]) {
+        const uploadResult = await cloudinaryUploadBuffer(req.files.nationalIdBackImage[0].buffer, "driver_documents");
+        profile.nationalIdBackImage = uploadResult.secure_url;
+      }
       if (req.files.licenseFrontImage && req.files.licenseFrontImage[0]) {
-        const uploadResult = await cloudinaryUploadBuffer(
-          req.files.licenseFrontImage[0].buffer,
-          "driver_licenses"
-        );
+        const uploadResult = await cloudinaryUploadBuffer(req.files.licenseFrontImage[0].buffer, "driver_licenses");
         profile.licenseFrontImage = uploadResult.secure_url;
       }
       if (req.files.licenseBackImage && req.files.licenseBackImage[0]) {
-        const uploadResult = await cloudinaryUploadBuffer(
-          req.files.licenseBackImage[0].buffer,
-          "driver_licenses"
-        );
+        const uploadResult = await cloudinaryUploadBuffer(req.files.licenseBackImage[0].buffer, "driver_licenses");
         profile.licenseBackImage = uploadResult.secure_url;
       }
-      if (req.files.permitDocument && req.files.permitDocument[0]) {
-        const uploadResult = await cloudinaryUploadBuffer(
-          req.files.permitDocument[0].buffer,
-          "route_permits"
-        );
-        routePermit.permitDocument = uploadResult.secure_url;
+      if (req.files.itineraryLicenseFrontImage && req.files.itineraryLicenseFrontImage[0]) {
+        const uploadResult = await cloudinaryUploadBuffer(req.files.itineraryLicenseFrontImage[0].buffer, "driver_documents");
+        profile.itineraryLicenseFrontImage = uploadResult.secure_url;
       }
-      if (req.files.vehicleLicenseDocument && req.files.vehicleLicenseDocument[0]) {
-        const uploadResult = await cloudinaryUploadBuffer(
-          req.files.vehicleLicenseDocument[0].buffer,
-          "vehicle_licenses"
-        );
-        vehicle.vehicleLicenseDocument = uploadResult.secure_url;
+      if (req.files.itineraryLicenseBackImage && req.files.itineraryLicenseBackImage[0]) {
+        const uploadResult = await cloudinaryUploadBuffer(req.files.itineraryLicenseBackImage[0].buffer, "driver_documents");
+        profile.itineraryLicenseBackImage = uploadResult.secure_url;
+      }
+      if (req.files.vehicleLicenseFrontImage && req.files.vehicleLicenseFrontImage[0]) {
+        const uploadResult = await cloudinaryUploadBuffer(req.files.vehicleLicenseFrontImage[0].buffer, "vehicle_documents");
+        vehicle.vehicleLicenseFrontImage = uploadResult.secure_url;
+      }
+      if (req.files.vehicleLicenseBackImage && req.files.vehicleLicenseBackImage[0]) {
+        const uploadResult = await cloudinaryUploadBuffer(req.files.vehicleLicenseBackImage[0].buffer, "vehicle_documents");
+        vehicle.vehicleLicenseBackImage = uploadResult.secure_url;
+      }
+      if (req.files.vehiclePhoto && req.files.vehiclePhoto[0]) {
+        const uploadResult = await cloudinaryUploadBuffer(req.files.vehiclePhoto[0].buffer, "vehicle_documents");
+        vehicle.vehiclePhoto = uploadResult.secure_url;
       }
     }
 
     // 3. Populate Fields from Request Body
     // Personal Info
     if (req.body.fullName) profile.fullName = req.body.fullName;
-    if (req.body.driverIdNumber) profile.driverIdNumber = req.body.driverIdNumber;
+    if (req.body.nationalIdNumber) profile.nationalIdNumber = req.body.nationalIdNumber;
     if (req.body.dateOfBirth) profile.dateOfBirth = req.body.dateOfBirth;
     if (req.body.contactNumber) profile.contactNumber = req.body.contactNumber;
     if (req.body.email) profile.email = req.body.email;
@@ -167,44 +175,44 @@ const registerDriverProfile = async (req, res, next) => {
     // 4. Validation for Full Submission (Non-draft)
     if (!isDraft) {
       // Validate Personal Info
-      if (!profile.fullName) return next(new AppError("Full name is required", 400));
-      if (!profile.driverIdNumber) return next(new AppError("Driver ID number is required", 400));
-      if (!profile.dateOfBirth) return next(new AppError("Date of birth is required", 400));
-      if (!profile.contactNumber) return next(new AppError("Contact number is required", 400));
-      if (!profile.email) return next(new AppError("Email address is required", 400));
-      if (!profile.residentialAddress) return next(new AppError("Residential address is required", 400));
+      // if (!profile.fullName) return next(new AppError("Full name is required", 400));
+      if (!profile.nationalIdNumber) return next(new AppError("National ID number is required", 400));
+      if (!profile.nationalIdFrontImage) return next(new AppError("National ID front image is required", 400));
+      if (!profile.nationalIdBackImage) return next(new AppError("National ID back image is required", 400));
+      // if (!profile.dateOfBirth) return next(new AppError("Date of birth is required", 400));
+      // if (!profile.contactNumber) return next(new AppError("Contact number is required", 400));
+      // if (!profile.email) return next(new AppError("Email address is required", 400));
+      // if (!profile.residentialAddress) return next(new AppError("Residential address is required", 400));
 
       // Validate License Details
-      if (!profile.licenseNumber) return next(new AppError("License number is required", 400));
-      if (!profile.licenseClass) return next(new AppError("License class/category is required", 400));
-      if (!profile.licenseIssueDate) return next(new AppError("License issue date is required", 400));
-      if (!profile.licenseExpiresAt) return next(new AppError("License expiry date is required", 400));
-      if (!profile.issuingAuthority) return next(new AppError("Issuing authority is required", 400));
+      // if (!profile.licenseNumber) return next(new AppError("License number is required", 400));
+      // if (!profile.licenseClass) return next(new AppError("License class/category is required", 400));
+      // if (!profile.licenseIssueDate) return next(new AppError("License issue date is required", 400));
+      // if (!profile.licenseExpiresAt) return next(new AppError("License expiry date is required", 400));
+      // if (!profile.issuingAuthority) return next(new AppError("Issuing authority is required", 400));
       if (!profile.licenseFrontImage) return next(new AppError("License front side document is required", 400));
       if (!profile.licenseBackImage) return next(new AppError("License back side document is required", 400));
 
       // Validate Vehicle Details
-      if (!vehicle.registrationNumber) return next(new AppError("Vehicle registration number is required", 400));
-      if (!vehicle.vehicleType) return next(new AppError("Vehicle type is required", 400));
+      // if (!vehicle.registrationNumber) return next(new AppError("Vehicle registration number is required", 400));
+      // if (!vehicle.vehicleType) return next(new AppError("Vehicle type is required", 400));
       if (!vehicle.make) return next(new AppError("Vehicle make is required", 400));
-      if (!vehicle.model) return next(new AppError("Vehicle model is required", 400));
-      if (!vehicle.year) return next(new AppError("Vehicle year of manufacture is required", 400));
+      // if (!vehicle.model) return next(new AppError("Vehicle model is required", 400));
+      // if (!vehicle.year) return next(new AppError("Vehicle year of manufacture is required", 400));
+      if (!vehicle.color) return next(new AppError("Vehicle color is required", 400));
       if (!vehicle.plateNumber) return next(new AppError("License plate number is required", 400));
-      if (!vehicle.insurancePolicyNumber) return next(new AppError("Insurance policy number is required", 400));
-      if (!vehicle.insuranceExpiryDate) return next(new AppError("Insurance expiry date is required", 400));
-      if (!vehicle.vehicleLicenseDocument) return next(new AppError("Vehicle license document is required", 400));
+      // if (!vehicle.insurancePolicyNumber) return next(new AppError("Insurance policy number is required", 400));
+      // if (!vehicle.insuranceExpiryDate) return next(new AppError("Insurance expiry date is required", 400));
+      if (!vehicle.vehicleLicenseFrontImage) return next(new AppError("Vehicle license front document is required", 400));
+      if (!vehicle.vehicleLicenseBackImage) return next(new AppError("Vehicle license back document is required", 400));
+      if (!vehicle.vehiclePhoto) return next(new AppError("Vehicle photo is required", 400));
 
-      // Validate Route Permit Details
-      if (!routePermit.permitNumber) return next(new AppError("Route permit number is required", 400));
-      if (!routePermit.issueDate) return next(new AppError("Route permit issue date is required", 400));
-      if (!routePermit.expiryDate) return next(new AppError("Route permit expiry date is required", 400));
-      if (!routePermit.permitType) return next(new AppError("Route permit type is required", 400));
-      if (!routePermit.permitDocument) return next(new AppError("Route permit document is required", 400));
+      // Route Permit Details are optional based on the design
 
       // Validate Certification
-      if (!profile.certifiedAccurate) {
-        return next(new AppError("You must certify that all provided information is accurate and complete", 400));
-      }
+      // if (!profile.certifiedAccurate) {
+      //  return next(new AppError("You must certify that all provided information is accurate and complete", 400));
+      // }
 
       // If all validated, set status to pending review
       profile.status = "pending";
