@@ -1,5 +1,4 @@
 import express from "express";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -20,8 +19,6 @@ import { setupSwagger } from "./config/openapi.js";
 
 import { fileURLToPath } from "url";
 import { error } from "console";
-
-dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
